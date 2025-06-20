@@ -84,7 +84,7 @@ if __name__ == "__main__":
         raise Exception("7239876033:AAHZc1A45AtFG_U63IEqnYLJYaqlvEIiNsk")
     if not openai.api_key:
         raise Exception("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")
-BOT_TOKEN = "7239876033:AAHZc1A45AtFG_U63IEqnYLJYaqlvEIiNsk")
+BOT_TOKEN = ("7239876033:AAHZc1A45AtFG_U63IEqnYLJYaqlvEIiNsk")
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
