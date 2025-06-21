@@ -9,7 +9,7 @@ from telegram.ext import (
     filters,
 )
 
-# OpenAI & Bot Token direkt als Strings eintragen
+# OpenAI & Bot Token direkt als Strings (oder besser über Umgebungsvariablen)
 openai.api_key = "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"
 BOT_TOKEN = "7239876033:AAHZc1A45AtFG_U63IEqnYLJYaqlvEIiNsk"
 
@@ -35,7 +35,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     user_text = update.message.text
 
-    # Systemprompt initialisieren
     if user_id not in chat_histories:
         chat_histories[user_id] = [{
             "role": "system",
@@ -45,22 +44,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         }]
 
-    # Bildanfrage erkennen
     if contains_image_request(user_text):
         prompt = user_text
         try:
             logging.info(f"Bildwunsch von User {user_id}: {prompt}")
-            response = openai.image.create(prompt=prompt, n=1, size="512x512")
-            image_url = response['data'][0]['url']
+            response = openai.images.generate(prompt=prompt, n=1, size="512x512")
+            image_url = response.data[0].url
             await update.message.reply_photo(photo=image_url)
         except Exception as e:
             logging.error(f"Fehler bei Bildgenerierung: {e}")
-            await update.message.reply_text(
-                "Sorry, ich konnte das Bild gerade nicht erstellen."
-            )
+            await update.message.reply_text("Sorry, ich konnte das Bild gerade nicht erstellen.")
         return
 
-    # Chat speichern
     chat_histories[user_id].append({"role": "user", "content": user_text})
 
     try:
@@ -75,19 +70,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(reply)
     except Exception as e:
         logging.error(f"Fehler bei GPT-Antwort: {e}")
-        await update.message.reply_text(
-            "Oops, da ist etwas schiefgelaufen. Versuch’s nochmal!"
-        )
+        await update.message.reply_text("Oops, da ist etwas schiefgelaufen. Versuch’s nochmal!")
 
 if __name__ == "__main__":
     if not BOT_TOKEN:
-        raise Exception("7239876033:AAHZc1A45AtFG_U63IEqnYLJYaqlvEIiNsk")
+        raise Exception("TELEGRAM_BOT_TOKEN ist nicht gesetzt!")
     if not openai.api_key:
-        raise Exception("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")
-BOT_TOKEN = ("7239876033:AAHZc1A45AtFG_U63IEqnYLJYaqlvEIiNsk")
+        raise Exception("OPENAI_API_KEY ist nicht gesetzt!")
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    # Optional: Flask-Server für Render Health Check
+    from flask import Flask
+    import threading
+
+    flask_app = Flask("")
+
+    @flask_app.route("/")
+    def home():
+        return "Bot läuft!"
+
+    def run_flask():
+        flask_app.run(host="0.0.0.0", port=8080)
+
+    threading.Thread(target=run_flask).start()
 
     logging.info("Bot startet...")
     app.run_polling()
